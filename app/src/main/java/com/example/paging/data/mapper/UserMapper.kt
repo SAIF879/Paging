@@ -17,7 +17,6 @@ fun UserDto.toDomain(): User {
             city = "",
             state = "",
             country = "",
-            postcode = "",
             coordinates = Coordinates(0.0, 0.0),
             timezone = Timezone("", "")
         ),
