@@ -5,6 +5,6 @@ import retrofit2.http.GET
 
 interface ApiService {
 
-    @GET("/?results=25&seed=abc")
+    @GET("api/?results=25&seed=abc")
     suspend fun getAllUsers(): RandomUserResponse
 }

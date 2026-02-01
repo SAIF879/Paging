@@ -32,8 +32,8 @@ import org.koin.androidx.compose.koinViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    viewModel: HomeViewModel = koinViewModel()
 ) {
+    val viewModel : HomeViewModel = koinViewModel ()
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
