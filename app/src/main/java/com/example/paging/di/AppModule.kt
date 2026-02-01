@@ -1,8 +1,9 @@
 package com.example.paging.di
 
 val appModule = listOf(
-    viewModelModule,
+    viewmodelModule,
     repoModule,
     useCaseModule,
-    networkModule
+    networkModule,
+    repoImplModule
 )
