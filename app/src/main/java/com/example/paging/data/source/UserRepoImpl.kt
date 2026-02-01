@@ -6,8 +6,8 @@ import com.example.paging.domain.repo.UserRepo
 import com.example.paging.domain.util.UserResult
 
 class UserRepoImpl(private val apiService: ApiService) : UserRepo {
-    override suspend fun getAllUsers(): UserResult {
-        return runCatching { apiService.getAllUsers() }.fold(
+    override suspend fun getUsers(page: Int): UserResult {
+        return runCatching { apiService.getAllUsers(page = page) }.fold(
             onSuccess = { UserResult.Success(it.toDomain()) },
             onFailure = { UserResult.Error(it.message ?: "Something went wrong") }
         )

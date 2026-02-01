@@ -4,16 +4,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,14 +26,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.paging.domain.model.*
+import com.example.paging.ui.components.ShimmerLoadingList
+import com.example.paging.ui.components.ShimmerUserCard
 import com.example.paging.ui.theme.*
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(
-) {
-    val viewModel : HomeViewModel = koinViewModel ()
+fun HomeScreen() {
+    val viewModel: HomeViewModel = koinViewModel()
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
@@ -61,13 +62,21 @@ fun HomeScreen(
         ) {
             when (val state = uiState) {
                 is UiState.Loading -> {
-                    LoadingContent()
+                    ShimmerLoadingList(itemCount = 5)
                 }
                 is UiState.Success -> {
-                    UserListContent(users = state.users)
+                    UserListContent(
+                        users = state.users,
+                        isLoadingMore = state.isLoadingMore,
+                        canLoadMore = state.canLoadMore,
+                        onLoadMore = { viewModel.loadMoreUsers() }
+                    )
                 }
                 is UiState.Error -> {
-                    ErrorContent(message = state.message)
+                    ErrorContent(
+                        message = state.message,
+                        onRetry = { viewModel.retry() }
+                    )
                 }
             }
         }
@@ -75,30 +84,10 @@ fun HomeScreen(
 }
 
 @Composable
-private fun LoadingContent() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            CircularProgressIndicator(
-                color = DarkPrimary,
-                strokeWidth = 3.dp
-            )
-            Text(
-                text = "Loading users...",
-                style = MaterialTheme.typography.bodyMedium,
-                color = DarkOnSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-private fun ErrorContent(message: String) {
+private fun ErrorContent(
+    message: String,
+    onRetry: () -> Unit
+) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -123,18 +112,84 @@ private fun ErrorContent(message: String) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = DarkOnSurfaceVariant
             )
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = onRetry,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = DarkPrimary
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Retry")
+            }
         }
     }
 }
 
 @Composable
-private fun UserListContent(users: List<User>) {
+private fun UserListContent(
+    users: List<User>,
+    isLoadingMore: Boolean,
+    canLoadMore: Boolean,
+    onLoadMore: () -> Unit
+) {
+    val listState = rememberLazyListState()
+
+    // Detect when user scrolls near the end
+    val shouldLoadMore by remember {
+        derivedStateOf {
+            val lastVisibleItem = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            val totalItems = listState.layoutInfo.totalItemsCount
+            lastVisibleItem >= totalItems - 3 && canLoadMore && !isLoadingMore
+        }
+    }
+
+    // Trigger load more when needed
+    LaunchedEffect(shouldLoadMore) {
+        if (shouldLoadMore) {
+            onLoadMore()
+        }
+    }
+
     LazyColumn(
+        state = listState,
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(users, key = { it.uuid }) { user ->
             UserCard(user = user)
+        }
+
+        // Loading more indicator at the bottom
+        if (isLoadingMore) {
+            item {
+                ShimmerUserCard(
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+            }
+        }
+
+        // End of list indicator
+        if (!canLoadMore && users.isNotEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "You've reached the end 🎉",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = DarkOnSurfaceVariant
+                    )
+                }
+            }
         }
     }
 }
@@ -386,20 +441,25 @@ private fun UserListPreview() {
             modifier = Modifier.fillMaxSize(),
             color = DarkBackground
         ) {
-            UserListContent(users = mockUsers)
+            UserListContent(
+                users = mockUsers,
+                isLoadingMore = false,
+                canLoadMore = true,
+                onLoadMore = {}
+            )
         }
     }
 }
 
 @Preview(showBackground = true, backgroundColor = 0xFF121212)
 @Composable
-private fun LoadingPreview() {
+private fun ShimmerLoadingPreview() {
     PagingTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = DarkBackground
         ) {
-            LoadingContent()
+            ShimmerLoadingList(itemCount = 3)
         }
     }
 }
@@ -412,7 +472,10 @@ private fun ErrorPreview() {
             modifier = Modifier.fillMaxSize(),
             color = DarkBackground
         ) {
-            ErrorContent(message = "Unable to connect to the server. Please check your internet connection.")
+            ErrorContent(
+                message = "Unable to connect to the server. Please check your internet connection.",
+                onRetry = {}
+            )
         }
     }
 }
