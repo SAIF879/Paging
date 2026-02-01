@@ -44,7 +44,7 @@ class HomeViewModel(private val userUseCase: UserUseCase) : ViewModel() {
         if (isLoading) return
         isLoading = true
 
-        // Update state to show loading more indicator
+
         if (!isInitialLoad && _uiState.value is UiState.Success) {
             _uiState.value = (_uiState.value as UiState.Success).copy(isLoadingMore = true)
         }
@@ -58,7 +58,7 @@ class HomeViewModel(private val userUseCase: UserUseCase) : ViewModel() {
                         if (isInitialLoad) {
                             _uiState.value = UiState.Error(result.message)
                         } else {
-                            // On pagination error, just stop loading more
+
                             _uiState.value = UiState.Success(
                                 users = allUsers.toList(),
                                 isLoadingMore = false,
@@ -72,7 +72,7 @@ class HomeViewModel(private val userUseCase: UserUseCase) : ViewModel() {
                         val newUsers = result.users
                         allUsers.addAll(newUsers)
                         
-                        // Assume no more data if we got less than expected (15 per page)
+
                         val canLoadMore = newUsers.size >= 15
 
                         _uiState.value = UiState.Success(
